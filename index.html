@@ -2,32 +2,99 @@
 <html lang="so">
 <head>
     <meta charset="UTF-8">
-    <title>TikTok Live Online</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Live - Chat & Likes</title>
     <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.18.0.js"></script>
     <style>
-        body { margin: 0; background: #000; font-family: sans-serif; color: white; display: flex; justify-content: center; }
-        #video-player { width: 100%; height: 100vh; background: #111; object-fit: cover; }
-        .controls { position: absolute; bottom: 30px; z-index: 10; width: 100%; text-align: center; }
-        .btn { background: #fe2c55; color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; cursor: pointer; }
+        body { margin: 0; background: #000; font-family: sans-serif; color: white; display: flex; justify-content: center; overflow: hidden; }
+        .app-container { width: 100%; max-width: 450px; height: 100vh; position: relative; background: #111; }
+        
+        #video-container { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* UI Overlay */
+        .overlay { position: absolute; bottom: 0; width: 100%; padding: 20px; box-sizing: border-box; background: linear-gradient(transparent, rgba(0,0,0,0.8)); z-index: 10; }
+        
+        /* Chat Box */
+        #chat-log { height: 150px; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 5px; }
+        .msg { background: rgba(0,0,0,0.4); padding: 5px 12px; border-radius: 15px; font-size: 14px; width: fit-content; }
+        .msg b { color: #fe2c55; margin-right: 5px; }
+
+        /* Inputs */
+        .input-row { display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border-radius: 25px; border: none; outline: none; background: rgba(255,255,255,0.2); color: white; }
+        .btn-send { background: #fe2c55; border: none; padding: 10px 20px; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; }
+        
+        /* Floating Heart Effect */
+        .heart { position: absolute; bottom: 100px; right: 20px; font-size: 30px; animation: floatUp 1s ease-out forwards; pointer-events: none; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-200px) translateX(-50px) scale(1.5); } }
     </style>
 </head>
 <body>
-    <div id="video-player"></div>
-    <div class="controls">
-        <button class="btn" onclick="joinLive()">Bilaaw LIVE</button>
-    </div>
 
-    <script>
-        const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
-        async function joinLive() {
-            await client.setClientRole("host");
-            await client.join("942bbc71f54644319752e582ea10af99", "tiktok_test", null, null);
-            const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-            const videoTrack = await AgoraRTC.createCameraVideoTrack();
-            videoTrack.play("video-player");
-            await client.publish([audioTrack, videoTrack]);
-            alert("Hadda waxaad tahay LIVE!");
+<div class="app-container">
+    <div id="video-container"></div>
+
+    <div class="overlay">
+        <div id="chat-log">
+            <div class="msg"><b>System:</b> Ku soo dhawaaw Live-ka! 🚀</div>
+        </div>
+        
+        <div class="input-row">
+            <input type="text" id="chat-input" placeholder="Qor faallo...">
+            <button class="btn-send" onclick="sendComment()">Send</button>
+            <button style="font-size: 24px; background: none; border: none; cursor: pointer;" onclick="sendLike()">❤️</button>
+        </div>
+
+        <button id="start-btn" style="width: 100%; margin-top: 15px; padding: 15px; background: #fe2c55; color: white; border: none; border-radius: 10px; font-weight: bold;" onclick="joinLive()">BILAAB LIVE</button>
+    </div>
+</div>
+
+<script>
+    const APP_ID = "942bbc71f54644319752e582ea10af99"; // App ID-gaaga
+    const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
+    let localTracks = { videoTrack: null, audioTrack: null };
+
+    async function joinLive() {
+        await client.setClientRole("host");
+        await client.join(APP_ID, "tiktok_test", null, null);
+        
+        localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
+        
+        localTracks.videoTrack.play("video-container");
+        await client.publish(Object.values(localTracks));
+        
+        document.getElementById('start-btn').style.display = "none";
+        addMessage("System", "Hadda waxaad tahay LIVE!");
+    }
+
+    function sendComment() {
+        const input = document.getElementById('chat-input');
+        if (input.value) {
+            addMessage("Me", input.value);
+            // Halkan waxaad ku xiri doontaa Agora RTM mustaqbalka
+            input.value = "";
         }
-    </script>
+    }
+
+    function sendLike() {
+        // Samee animation-ka wadnaha
+        const heart = document.createElement('div');
+        heart.className = 'heart';
+        heart.innerText = '❤️';
+        document.querySelector('.app-container').appendChild(heart);
+        setTimeout(() => heart.remove(), 1000);
+    }
+
+    function addMessage(user, text) {
+        const log = document.getElementById('chat-log');
+        const div = document.createElement('div');
+        div.className = "msg";
+        div.innerHTML = `<b>${user}:</b> ${text}`;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+    }
+</script>
+
 </body>
 </html>
