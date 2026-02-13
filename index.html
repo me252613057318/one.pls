@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ismail Live - Auth System</title>
+    <title>Ismail Live - Official App</title>
     <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.18.0.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -12,27 +12,29 @@
     <style>
         body { margin: 0; background: #000; font-family: sans-serif; color: white; display: flex; justify-content: center; }
         #auth-screen { position: fixed; width: 100%; height: 100%; background: #121212; display: flex; align-items: center; justify-content: center; z-index: 100; }
-        .auth-box { background: #1e1e1e; padding: 30px; border-radius: 15px; width: 85%; max-width: 380px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; }
-        .btn { width: 100%; padding: 12px; background: #fe2c55; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .auth-box { background: #1e1e1e; padding: 30px; border-radius: 15px; width: 85%; max-width: 380px; text-align: center; border: 1px solid #333; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: white; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; background: #fe2c55; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
         .toggle-link { color: #aaa; font-size: 13px; margin-top: 15px; cursor: pointer; display: block; }
         
         .app-container { display: none; width: 100%; max-width: 450px; height: 100vh; position: relative; background: #111; }
         #video-container { width: 100%; height: 100%; object-fit: cover; }
         .overlay { position: absolute; bottom: 0; width: 100%; padding: 20px; box-sizing: border-box; background: linear-gradient(transparent, rgba(0,0,0,0.9)); z-index: 10; }
-        #chat-log { height: 150px; overflow-y: auto; margin-bottom: 10px; }
+        #chat-log { height: 150px; overflow-y: auto; margin-bottom: 10px; font-size: 14px; }
+        .msg { background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 15px; margin-bottom: 5px; width: fit-content; }
+        .msg b { color: #fe2c55; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen">
-    <div class="auth-box" id="auth-form">
+    <div class="auth-box">
         <h2 id="auth-title">Login</h2>
-        <input type="email" id="email" placeholder="Email (tusaale@gmail.com)">
-        <input type="password" id="password" placeholder="Password (ugu yaraan 6 xaraf)">
+        <input type="email" id="email" placeholder="Emailkaaga">
+        <input type="password" id="password" placeholder="Password (6+ xaraf)">
         <button class="btn" id="auth-btn" onclick="handleAuth()">Login</button>
-        <span class="toggle-link" onclick="toggleAuth()">Ma haysatid account? Sign Up halkan</span>
-        <p id="error-msg" style="color: #fe2c55; font-size: 12px;"></p>
+        <span class="toggle-link" id="toggle-text" onclick="toggleAuth()">Ma haysatid account? Sign Up halkan</span>
+        <p id="error-msg" style="color: #fe2c55; font-size: 12px; margin-top:10px;"></p>
     </div>
 </div>
 
@@ -44,75 +46,12 @@
             <input type="text" id="chat-input" placeholder="Qor wax...">
             <button class="btn" style="width:auto;" onclick="sendComment()">DIR</button>
         </div>
-        <button class="btn" onclick="joinLive()">BILAAB LIVE</button>
-        <button onclick="firebase.auth().signOut()" style="background:none; border:none; color:#aaa; font-size:12px; margin-top:10px; width:100%;">Logout</button>
+        <button class="btn" style="margin-top:10px;" onclick="joinLive()">BILAAB LIVE</button>
+        <button onclick="firebase.auth().signOut()" style="background:none; border:none; color:#aaa; font-size:12px; margin-top:10px; width:100%; cursor:pointer;">Logout</button>
     </div>
 </div>
 
 <script>
     let isLogin = true;
-    const authScreen = document.getElementById('auth-screen');
-    const mainApp = document.getElementById('main-app');
 
-    // CONFIG (Isticmaal kuwii hore)
-    const firebaseConfig = {
-        apiKey: "AIzaSyD6zz7m6nvYr-vYhfYmmD42UF6T54L83c",
-        authDomain: "one-pls.firebaseapp.com",
-        projectId: "one-pls",
-        storageBucket: "one-pls.firebasestorage.app",
-        messagingSenderId: "492545292205",
-        appId: "1:492545292205:web:caae83615783515024da6e",
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
-    function toggleAuth() {
-        isLogin = !isLogin;
-        document.getElementById('auth-title').innerText = isLogin ? "Login" : "Sign Up";
-        document.getElementById('auth-btn').innerText = isLogin ? "Login" : "Sign Up";
-        document.getElementById('error-msg').innerText = "";
-    }
-
-    async function handleAuth() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        try {
-            if (isLogin) {
-                await auth.signInWithEmailAndPassword(email, password);
-            } else {
-                await auth.createUserWithEmailAndPassword(email, password);
-            }
-        } catch (err) {
-            document.getElementById('error-msg').innerText = err.message;
-        }
-    }
-
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            authScreen.style.display = 'none';
-            mainApp.style.display = 'block';
-        } else {
-            authScreen.style.display = 'flex';
-            mainApp.style.display = 'none';
-        }
-    });
-
-    // CHAT & LIVE (Sidii hore)
-    async function sendComment() {
-        const input = document.getElementById('chat-input');
-        if (input.value.trim() !== "") {
-            await db.collection("chats").add({
-                user: auth.currentUser.email.split('@')[0],
-                text: input.value,
-                time: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            input.value = "";
-        }
-    }
-
-    // AGORA LOGIC (Kudar koodhkii hore ee joinLive)
-</script>
-</body>
-</html>
+    // XOGTAADA
