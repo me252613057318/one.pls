@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="so">
+<head>
+    <meta charset="UTF-8">
+    <title>TikTok Live Online</title>
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.18.0.js"></script>
+    <style>
+        body { margin: 0; background: #000; font-family: sans-serif; color: white; display: flex; justify-content: center; }
+        #video-player { width: 100%; height: 100vh; background: #111; object-fit: cover; }
+        .controls { position: absolute; bottom: 30px; z-index: 10; width: 100%; text-align: center; }
+        .btn { background: #fe2c55; color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="video-player"></div>
+    <div class="controls">
+        <button class="btn" onclick="joinLive()">Bilaaw LIVE</button>
+    </div>
+
+    <script>
+        const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
+        async function joinLive() {
+            await client.setClientRole("host");
+            await client.join("942bbc71f54644319752e582ea10af99", "tiktok_test", null, null);
+            const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+            const videoTrack = await AgoraRTC.createCameraVideoTrack();
+            videoTrack.play("video-player");
+            await client.publish([audioTrack, videoTrack]);
+            alert("Hadda waxaad tahay LIVE!");
+        }
+    </script>
+</body>
+</html>
