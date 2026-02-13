@@ -3,96 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok Live - Chat & Likes</title>
+    <title>TikTok Live - Ismail Project</title>
     <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.18.0.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
     <style>
         body { margin: 0; background: #000; font-family: sans-serif; color: white; display: flex; justify-content: center; overflow: hidden; }
         .app-container { width: 100%; max-width: 450px; height: 100vh; position: relative; background: #111; }
-        
         #video-container { width: 100%; height: 100%; object-fit: cover; }
         
-        /* UI Overlay */
-        .overlay { position: absolute; bottom: 0; width: 100%; padding: 20px; box-sizing: border-box; background: linear-gradient(transparent, rgba(0,0,0,0.8)); z-index: 10; }
-        
-        /* Chat Box */
+        .overlay { position: absolute; bottom: 0; width: 100%; padding: 20px; box-sizing: border-box; background: linear-gradient(transparent, rgba(0,0,0,0.9)); z-index: 10; }
         #chat-log { height: 150px; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 5px; }
-        .msg { background: rgba(0,0,0,0.4); padding: 5px 12px; border-radius: 15px; font-size: 14px; width: fit-content; }
-        .msg b { color: #fe2c55; margin-right: 5px; }
+        .msg { background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 15px; font-size: 14px; width: fit-content; }
+        .msg b { color: #fe2c55; }
 
-        /* Inputs */
         .input-row { display: flex; gap: 10px; }
-        input { flex: 1; padding: 12px; border-radius: 25px; border: none; outline: none; background: rgba(255,255,255,0.2); color: white; }
+        input { flex: 1; padding: 12px; border-radius: 25px; border: none; background: rgba(255,255,255,0.2); color: white; outline: none; }
         .btn-send { background: #fe2c55; border: none; padding: 10px 20px; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; }
         
-        /* Floating Heart Effect */
-        .heart { position: absolute; bottom: 100px; right: 20px; font-size: 30px; animation: floatUp 1s ease-out forwards; pointer-events: none; }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-200px) translateX(-50px) scale(1.5); } }
+        #start-btn { width: 100%; margin-top: 15px; padding: 15px; background: #fe2c55; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="app-container">
     <div id="video-container"></div>
-
     <div class="overlay">
-        <div id="chat-log">
-            <div class="msg"><b>System:</b> Ku soo dhawaaw Live-ka! 🚀</div>
-        </div>
-        
+        <div id="chat-log"></div>
         <div class="input-row">
             <input type="text" id="chat-input" placeholder="Qor faallo...">
             <button class="btn-send" onclick="sendComment()">Send</button>
-            <button style="font-size: 24px; background: none; border: none; cursor: pointer;" onclick="sendLike()">❤️</button>
         </div>
-
-        <button id="start-btn" style="width: 100%; margin-top: 15px; padding: 15px; background: #fe2c55; color: white; border: none; border-radius: 10px; font-weight: bold;" onclick="joinLive()">BILAAB LIVE</button>
+        <button id="start-btn" onclick="joinLive()">BILAAB LIVE</button>
     </div>
 </div>
 
 <script>
-    const APP_ID = "942bbc71f54644319752e582ea10af99"; // App ID-gaaga
+    // 1. FIREBASE CONFIG (Kani waa xogtii aad sawirka iigu soo dirtay)
+    const firebaseConfig = {
+        apiKey: "AIzaSyD6zz7m6nvYr-vYhfYmmD42UF6T54L83c",
+        authDomain: "one-pls.firebaseapp.com",
+        projectId: "one-pls",
+        storageBucket: "one-pls.firebasestorage.app",
+        messagingSenderId: "492545292205",
+        appId: "1:492545292205:web:caae83615783515024da6e",
+        measurementId: "G-V4G9S8GMWP"
+    };
+
+    // Bilow Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 2. AGORA CONFIG
+    const APP_ID = "942bbc71f54644319752e582ea10af99";
     const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
     let localTracks = { videoTrack: null, audioTrack: null };
 
-    async function joinLive() {
-        await client.setClientRole("host");
-        await client.join(APP_ID, "tiktok_test", null, null);
-        
-        localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-        localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
-        
-        localTracks.videoTrack.play("video-container");
-        await client.publish(Object.values(localTracks));
-        
-        document.getElementById('start-btn').style.display = "none";
-        addMessage("System", "Hadda waxaad tahay LIVE!");
-    }
+    // 3. DHAGEYSO CHAT-KA (Real-time)
+    db.collection("chats").orderBy("time", "asc").onSnapshot((snapshot) => {
+        const log = document.getElementById('chat-log');
+        log.innerHTML = "";
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            const div = document.createElement('div');
+            div.className = "msg";
+            div.innerHTML = `<b>User:</b> ${data.text}`;
+            log.appendChild(div);
+        });
+        log.scrollTop = log.scrollHeight;
+    });
 
-    function sendComment() {
-        const input = document.getElementById('chat-input');
-        if (input.value) {
-            addMessage("Me", input.value);
-            // Halkan waxaad ku xiri doontaa Agora RTM mustaqbalka
-            input.value = "";
+    // 4. FUNCTIONS
+    async function joinLive() {
+        try {
+            await client.setClientRole("host");
+            await client.join(APP_ID, "tiktok_test", null, null);
+            
+            localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+            localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
+            
+            localTracks.videoTrack.play("video-container");
+            await client.publish(Object.values(localTracks));
+            
+            document.getElementById('start-btn').style.display = "none";
+            console.log("Live-ku waa bilaawday!");
+        } catch (error) {
+            console.error("Khalad ayaa dhacay:", error);
+            alert("Fadlan hubi inaad kamarada ogolaatay!");
         }
     }
 
-    function sendLike() {
-        // Samee animation-ka wadnaha
-        const heart = document.createElement('div');
-        heart.className = 'heart';
-        heart.innerText = '❤️';
-        document.querySelector('.app-container').appendChild(heart);
-        setTimeout(() => heart.remove(), 1000);
-    }
-
-    function addMessage(user, text) {
-        const log = document.getElementById('chat-log');
-        const div = document.createElement('div');
-        div.className = "msg";
-        div.innerHTML = `<b>${user}:</b> ${text}`;
-        log.appendChild(div);
-        log.scrollTop = log.scrollHeight;
+    async function sendComment() {
+        const input = document.getElementById('chat-input');
+        if (input.value.trim() !== "") {
+            try {
+                await db.collection("chats").add({
+                    text: input.value,
+                    time: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                input.value = "";
+            } catch (e) {
+                console.error("Firebase Error:", e);
+                alert("Hubi in Firestore Database uu 'Test Mode' ku jiro!");
+            }
+        }
     }
 </script>
 
