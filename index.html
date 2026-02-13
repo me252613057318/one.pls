@@ -54,4 +54,90 @@
 <script>
     let isLogin = true;
 
-    // XOGTAADA
+    // XOGTAADA CUSUB EE SAXDA AH
+    const firebaseConfig = {
+        apiKey: "AIzaSyD6zz7m6nvYr-vYhfYmmD42UF3cG54zMUo",
+        authDomain: "one-pls.firebaseapp.com",
+        projectId: "one-pls",
+        storageBucket: "one-pls.firebasestorage.app",
+        messagingSenderId: "492545292205",
+        appId: "1:492545292205:web:caae83615783b8cbc89324"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    function toggleAuth() {
+        isLogin = !isLogin;
+        document.getElementById('auth-title').innerText = isLogin ? "Login" : "Sign Up";
+        document.getElementById('auth-btn').innerText = isLogin ? "Login" : "Sign Up";
+        document.getElementById('toggle-text').innerText = isLogin ? "Ma haysatid account? Sign Up halkan" : "Account ma haysataa? Login halkan";
+    }
+
+    async function handleAuth() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const errorMsg = document.getElementById('error-msg');
+        try {
+            if (isLogin) {
+                await auth.signInWithEmailAndPassword(email, password);
+            } else {
+                await auth.createUserWithEmailAndPassword(email, password);
+            }
+        } catch (err) {
+            errorMsg.innerText = "Khalad: " + err.message;
+        }
+    }
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+        } else {
+            document.getElementById('auth-screen').style.display = 'flex';
+            document.getElementById('main-app').style.display = 'none';
+        }
+    });
+
+    // CHAT SYSTEM
+    db.collection("chats").orderBy("time", "asc").onSnapshot(snapshot => {
+        const log = document.getElementById('chat-log');
+        log.innerHTML = "";
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const div = document.createElement('div');
+            div.className = "msg";
+            div.innerHTML = `<b>${data.user}:</b> ${data.text}`;
+            log.appendChild(div);
+        });
+        log.scrollTop = log.scrollHeight;
+    });
+
+    async function sendComment() {
+        const input = document.getElementById('chat-input');
+        if (input.value.trim() !== "" && auth.currentUser) {
+            await db.collection("chats").add({
+                user: auth.currentUser.email.split('@')[0],
+                text: input.value,
+                time: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            input.value = "";
+        }
+    }
+
+    // AGORA LIVE SYSTEM
+    const APP_ID = "942bbc71f54644319752e582ea10af99";
+    const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
+    async function joinLive() {
+        try {
+            await client.setClientRole("host");
+            await client.join(APP_ID, "tiktok_test", null, null);
+            const [audio, video] = await AgoraRTC.createMicrophoneAndCameraTracks();
+            video.play("video-container");
+            await client.publish([audio, video]);
+        } catch (e) { alert("Hubi kamarada!"); }
+    }
+</script>
+</body>
+</html>
