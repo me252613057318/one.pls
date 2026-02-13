@@ -12,16 +12,13 @@
         body { margin: 0; background: #000; font-family: sans-serif; color: white; display: flex; justify-content: center; overflow: hidden; }
         .app-container { width: 100%; max-width: 450px; height: 100vh; position: relative; background: #111; }
         #video-container { width: 100%; height: 100%; object-fit: cover; }
-        
         .overlay { position: absolute; bottom: 0; width: 100%; padding: 20px; box-sizing: border-box; background: linear-gradient(transparent, rgba(0,0,0,0.9)); z-index: 10; }
-        #chat-log { height: 150px; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 5px; }
-        .msg { background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 15px; font-size: 14px; width: fit-content; }
-        .msg b { color: #fe2c55; }
-
+        #chat-log { height: 180px; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 5px; }
+        .msg { background: rgba(0,0,0,0.5); padding: 6px 15px; border-radius: 20px; font-size: 14px; width: fit-content; }
+        .msg b { color: #fe2c55; margin-right: 5px; }
         .input-row { display: flex; gap: 10px; }
         input { flex: 1; padding: 12px; border-radius: 25px; border: none; background: rgba(255,255,255,0.2); color: white; outline: none; }
         .btn-send { background: #fe2c55; border: none; padding: 10px 20px; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; }
-        
         #start-btn { width: 100%; margin-top: 15px; padding: 15px; background: #fe2c55; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
@@ -40,7 +37,9 @@
 </div>
 
 <script>
-    // 1. FIREBASE CONFIG (Kani waa xogtii aad sawirka iigu soo dirtay)
+    // Magaca qofka weydii marka uu bogga soo galo
+    let userName = prompt("Fadlan qor magacaaga:") || "Guest" + Math.floor(Math.random() * 1000);
+
     const firebaseConfig = {
         apiKey: "AIzaSyD6zz7m6nvYr-vYhfYmmD42UF6T54L83c",
         authDomain: "one-pls.firebaseapp.com",
@@ -51,16 +50,14 @@
         measurementId: "G-V4G9S8GMWP"
     };
 
-    // Bilow Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 2. AGORA CONFIG
     const APP_ID = "942bbc71f54644319752e582ea10af99";
     const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
     let localTracks = { videoTrack: null, audioTrack: null };
 
-    // 3. DHAGEYSO CHAT-KA (Real-time)
+    // DHAGEYSO CHAT-KA (Magaca hadda wuu soo muuqanayaa)
     db.collection("chats").orderBy("time", "asc").onSnapshot((snapshot) => {
         const log = document.getElementById('chat-log');
         log.innerHTML = "";
@@ -68,48 +65,37 @@
             const data = doc.data();
             const div = document.createElement('div');
             div.className = "msg";
-            div.innerHTML = `<b>User:</b> ${data.text}`;
+            div.innerHTML = `<b>${data.user}:</b> ${data.text}`;
             log.appendChild(div);
         });
         log.scrollTop = log.scrollHeight;
     });
 
-    // 4. FUNCTIONS
     async function joinLive() {
         try {
             await client.setClientRole("host");
             await client.join(APP_ID, "tiktok_test", null, null);
-            
             localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
             localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
-            
             localTracks.videoTrack.play("video-container");
             await client.publish(Object.values(localTracks));
-            
             document.getElementById('start-btn').style.display = "none";
-            console.log("Live-ku waa bilaawday!");
         } catch (error) {
-            console.error("Khalad ayaa dhacay:", error);
-            alert("Fadlan hubi inaad kamarada ogolaatay!");
+            alert("Fadlan hubi kamarada!");
         }
     }
 
     async function sendComment() {
         const input = document.getElementById('chat-input');
         if (input.value.trim() !== "") {
-            try {
-                await db.collection("chats").add({
-                    text: input.value,
-                    time: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                input.value = "";
-            } catch (e) {
-                console.error("Firebase Error:", e);
-                alert("Hubi in Firestore Database uu 'Test Mode' ku jiro!");
-            }
+            await db.collection("chats").add({
+                user: userName, // Magaca qofka halkan ayaa lagu daray
+                text: input.value,
+                time: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            input.value = "";
         }
     }
 </script>
-
 </body>
 </html>
