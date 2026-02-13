@@ -3,43 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok Live - Ismail Project</title>
+    <title>Ismail Live - Auth System</title>
     <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.18.0.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
     <style>
-        body { margin: 0; background: #000; font-family: sans-serif; color: white; display: flex; justify-content: center; overflow: hidden; }
-        .app-container { width: 100%; max-width: 450px; height: 100vh; position: relative; background: #111; }
+        body { margin: 0; background: #000; font-family: sans-serif; color: white; display: flex; justify-content: center; }
+        #auth-screen { position: fixed; width: 100%; height: 100%; background: #121212; display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .auth-box { background: #1e1e1e; padding: 30px; border-radius: 15px; width: 85%; max-width: 380px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; background: #fe2c55; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .toggle-link { color: #aaa; font-size: 13px; margin-top: 15px; cursor: pointer; display: block; }
+        
+        .app-container { display: none; width: 100%; max-width: 450px; height: 100vh; position: relative; background: #111; }
         #video-container { width: 100%; height: 100%; object-fit: cover; }
         .overlay { position: absolute; bottom: 0; width: 100%; padding: 20px; box-sizing: border-box; background: linear-gradient(transparent, rgba(0,0,0,0.9)); z-index: 10; }
-        #chat-log { height: 180px; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 5px; }
-        .msg { background: rgba(0,0,0,0.5); padding: 6px 15px; border-radius: 20px; font-size: 14px; width: fit-content; }
-        .msg b { color: #fe2c55; margin-right: 5px; }
-        .input-row { display: flex; gap: 10px; }
-        input { flex: 1; padding: 12px; border-radius: 25px; border: none; background: rgba(255,255,255,0.2); color: white; outline: none; }
-        .btn-send { background: #fe2c55; border: none; padding: 10px 20px; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; }
-        #start-btn { width: 100%; margin-top: 15px; padding: 15px; background: #fe2c55; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        #chat-log { height: 150px; overflow-y: auto; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-<div class="app-container">
+<div id="auth-screen">
+    <div class="auth-box" id="auth-form">
+        <h2 id="auth-title">Login</h2>
+        <input type="email" id="email" placeholder="Email (tusaale@gmail.com)">
+        <input type="password" id="password" placeholder="Password (ugu yaraan 6 xaraf)">
+        <button class="btn" id="auth-btn" onclick="handleAuth()">Login</button>
+        <span class="toggle-link" onclick="toggleAuth()">Ma haysatid account? Sign Up halkan</span>
+        <p id="error-msg" style="color: #fe2c55; font-size: 12px;"></p>
+    </div>
+</div>
+
+<div class="app-container" id="main-app">
     <div id="video-container"></div>
     <div class="overlay">
         <div id="chat-log"></div>
-        <div class="input-row">
-            <input type="text" id="chat-input" placeholder="Qor faallo...">
-            <button class="btn-send" onclick="sendComment()">Send</button>
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="chat-input" placeholder="Qor wax...">
+            <button class="btn" style="width:auto;" onclick="sendComment()">DIR</button>
         </div>
-        <button id="start-btn" onclick="joinLive()">BILAAB LIVE</button>
+        <button class="btn" onclick="joinLive()">BILAAB LIVE</button>
+        <button onclick="firebase.auth().signOut()" style="background:none; border:none; color:#aaa; font-size:12px; margin-top:10px; width:100%;">Logout</button>
     </div>
 </div>
 
 <script>
-    // Magaca qofka weydii marka uu bogga soo galo
-    let userName = prompt("Fadlan qor magacaaga:") || "Guest" + Math.floor(Math.random() * 1000);
+    let isLogin = true;
+    const authScreen = document.getElementById('auth-screen');
+    const mainApp = document.getElementById('main-app');
 
+    // CONFIG (Isticmaal kuwii hore)
     const firebaseConfig = {
         apiKey: "AIzaSyD6zz7m6nvYr-vYhfYmmD42UF6T54L83c",
         authDomain: "one-pls.firebaseapp.com",
@@ -47,55 +62,57 @@
         storageBucket: "one-pls.firebasestorage.app",
         messagingSenderId: "492545292205",
         appId: "1:492545292205:web:caae83615783515024da6e",
-        measurementId: "G-V4G9S8GMWP"
     };
 
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const db = firebase.firestore();
 
-    const APP_ID = "942bbc71f54644319752e582ea10af99";
-    const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
-    let localTracks = { videoTrack: null, audioTrack: null };
+    function toggleAuth() {
+        isLogin = !isLogin;
+        document.getElementById('auth-title').innerText = isLogin ? "Login" : "Sign Up";
+        document.getElementById('auth-btn').innerText = isLogin ? "Login" : "Sign Up";
+        document.getElementById('error-msg').innerText = "";
+    }
 
-    // DHAGEYSO CHAT-KA (Magaca hadda wuu soo muuqanayaa)
-    db.collection("chats").orderBy("time", "asc").onSnapshot((snapshot) => {
-        const log = document.getElementById('chat-log');
-        log.innerHTML = "";
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            const div = document.createElement('div');
-            div.className = "msg";
-            div.innerHTML = `<b>${data.user}:</b> ${data.text}`;
-            log.appendChild(div);
-        });
-        log.scrollTop = log.scrollHeight;
-    });
-
-    async function joinLive() {
+    async function handleAuth() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
         try {
-            await client.setClientRole("host");
-            await client.join(APP_ID, "tiktok_test", null, null);
-            localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-            localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
-            localTracks.videoTrack.play("video-container");
-            await client.publish(Object.values(localTracks));
-            document.getElementById('start-btn').style.display = "none";
-        } catch (error) {
-            alert("Fadlan hubi kamarada!");
+            if (isLogin) {
+                await auth.signInWithEmailAndPassword(email, password);
+            } else {
+                await auth.createUserWithEmailAndPassword(email, password);
+            }
+        } catch (err) {
+            document.getElementById('error-msg').innerText = err.message;
         }
     }
 
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            authScreen.style.display = 'none';
+            mainApp.style.display = 'block';
+        } else {
+            authScreen.style.display = 'flex';
+            mainApp.style.display = 'none';
+        }
+    });
+
+    // CHAT & LIVE (Sidii hore)
     async function sendComment() {
         const input = document.getElementById('chat-input');
         if (input.value.trim() !== "") {
             await db.collection("chats").add({
-                user: userName, // Magaca qofka halkan ayaa lagu daray
+                user: auth.currentUser.email.split('@')[0],
                 text: input.value,
                 time: firebase.firestore.FieldValue.serverTimestamp()
             });
             input.value = "";
         }
     }
+
+    // AGORA LOGIC (Kudar koodhkii hore ee joinLive)
 </script>
 </body>
 </html>
